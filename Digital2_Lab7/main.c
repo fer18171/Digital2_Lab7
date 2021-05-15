@@ -22,13 +22,8 @@ void Timer0IntHandler(void);
 
 //*********************DECLARACION DE VARIABLES************************
 
-bool state = true;
+bool state = false;
 
-
-void Timer0IntHandler(void){
-    TimerIntClear(TIMER0_BASE, TIMER_A);
-    state=~state;
-}
 //****************************PROGRAMA**********************************
 int main(void)
 {   //Se configura reloj a 40MHz
@@ -39,16 +34,15 @@ int main(void)
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3);
     IntMasterEnable();
     TimerConfig();
-
+    UARTconfig();
 //******************************MAIN LOOP********************************
     while(1){
         if (state){
-            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0xFF);
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0F);
         }
         else{
             GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x00);
         }
-
 
     }
 	return 0;
@@ -68,5 +62,23 @@ void TimerConfig(void){
     TimerEnable(TIMER0_BASE, TIMER_A);
 }
 
+void Timer0IntHandler(void){
+    TimerIntClear(TIMER0_BASE, TIMER_A);
+    state= !state;
+}
 
+void UARTconfig(void){
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
+    GPIOPinConfigure(GPIO_PA0_U0RX);
+    GPIOPinConfigure(GPIO_PA1_U0TX);
+    GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0|GPIO_PIN_1);
+    UARTConfigSetExpClk(UART0_BASE,SysCtlClockGet(), 115200, UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE);
+    UARTIntEnable(UART0_BASE, UART_INT_RT | UART_INT_RX);
+    UARTIntRegister(UART0_BASE, UARTIntHandler)
+}
+
+void UARTIntHandler(void){
+
+}
 
