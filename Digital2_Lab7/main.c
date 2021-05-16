@@ -10,12 +10,14 @@
 #include "driverlib/gpio.h"
 #include "driverlib/timer.h"
 #include "driverlib/systick.h"
+#include "driverlib/uart.h"
 
 //**********************PROTOTIPOS DE FUNCIONES***********************
 void TimerConfig(void);
 void Timer0IntHandler(void);
-
-
+void UARTconfig(void);
+void UARTIntHandler(void);
+void SendString(char* frase);
 /**
  * main.c
  */
@@ -23,9 +25,12 @@ void Timer0IntHandler(void);
 //*********************DECLARACION DE VARIABLES************************
 
 bool state = false;
-
+bool state2 = false;
+char valor = ' ';
+char valorP = ' ';
+uint8_t n=0;
 //****************************PROGRAMA**********************************
-int main(void)
+void main(void)
 {   //Se configura reloj a 40MHz
     SysCtlClockSet(SYSCTL_SYSDIV_5|SYSCTL_USE_PLL|SYSCTL_XTAL_16MHZ|SYSCTL_OSC_MAIN);
     //Se activa el puerto F
@@ -35,17 +40,25 @@ int main(void)
     IntMasterEnable();
     TimerConfig();
     UARTconfig();
+    SendString("Coloca las letras r, g, b para encender el led con los 3 colores, coloca una letra de nuevo para apagar: ");
 //******************************MAIN LOOP********************************
     while(1){
-        if (state){
-            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x0F);
+        if (state & state2){
+            if (valor == 'r'){
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, 2);
+            }
+            if (valor == 'g'){
+                        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, 8);
+                        }
+            if (valor == 'b'){
+                        GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, 4);
+                        }
         }
         else{
-            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1, 0x00);
+            GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3, 0x00);
         }
-
     }
-	return 0;
+
 }
 
 
@@ -67,18 +80,34 @@ void Timer0IntHandler(void){
     state= !state;
 }
 
+void UARTIntHandler(void){
+    UARTIntClear(UART0_BASE, UART_INT_RT | UART_INT_RX);
+    valorP = valor;
+    valor = UARTCharGetNonBlocking (UART0_BASE);
+    if (valorP == valor){
+        state2 = !state2;
+    }
+    else if (valor == 'r'|valor == 'g'|valor == 'b'){
+        state2 = true;
+    }
+    else {
+        valor = valorP;
+    }
+
+}
+
 void UARTconfig(void){
     SysCtlPeripheralEnable(SYSCTL_PERIPH_UART0);
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOA);
-    GPIOPinConfigure(GPIO_PA0_U0RX);
-    GPIOPinConfigure(GPIO_PA1_U0TX);
     GPIOPinTypeUART(GPIO_PORTA_BASE, GPIO_PIN_0|GPIO_PIN_1);
     UARTConfigSetExpClk(UART0_BASE,SysCtlClockGet(), 115200, UART_CONFIG_WLEN_8 | UART_CONFIG_STOP_ONE | UART_CONFIG_PAR_NONE);
     UARTIntEnable(UART0_BASE, UART_INT_RT | UART_INT_RX);
-    UARTIntRegister(UART0_BASE, UARTIntHandler)
+    UARTIntRegister(UART0_BASE, UARTIntHandler);
 }
 
-void UARTIntHandler(void){
-
+void SendString(char* frase){
+    while (*frase){
+        UARTCharPut(UART0_BASE, *frase++);
+    }
 }
 
